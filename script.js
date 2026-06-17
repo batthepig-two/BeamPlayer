@@ -422,7 +422,7 @@
         renderHistory();
         showToast(`Imported ${imported.length} items ✓`);
       } catch {
-        showToast("❌ Invalid file. Must be a YouTube 2.0 history export.");
+        showToast("❌ Invalid file. Must be a BeamPlayer history export.");
       }
     };
     reader.readAsText(file);
