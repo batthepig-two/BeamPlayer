@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube 2.0</title>
+    <meta name="description" content="A beautiful YouTube video player with history, favorites, queue, and progress tracking." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+
+    <!-- ── NAVBAR ── -->
+    <nav class="navbar" id="navbar">
+      <div class="navbar-brand">
+        <span class="brand-icon">▶</span>
+        <span class="brand-text">YouTube <span class="brand-accent">2.0</span></span>
+      </div>
+      <div class="search-hub">
+        <input type="text" id="urlInput" class="url-input"
+          placeholder="Paste a YouTube video, Shorts, or channel URL…"
+          autocomplete="off" spellcheck="false" />
+        <button id="loadBtn" class="load-btn">Load</button>
+        <button id="clearBtn" class="clear-btn" title="Clear all history">Clear History</button>
+      </div>
+    </nav>
+
+    <!-- ── KEYBOARD HINT ── -->
+    <div class="kb-hint" id="kbHint" style="display:none">
+      ⌨️ Tip: Press <kbd>Ctrl+V</kbd> (or <kbd>⌘V</kbd> on Mac) anywhere on this page to instantly load a copied YouTube URL.
+      <button class="kb-hint-close" id="kbHintClose">✕</button>
+    </div>
+
+    <!-- ── MAIN LAYOUT ── -->
+    <main class="main-layout" id="mainLayout">
+
+      <section class="player-section">
+
+        <!-- Player Frame -->
+        <div class="player-frame" id="playerFrame">
+
+          <!-- Theater mode exit button (visible only in theater mode) -->
+          <button class="theater-exit-btn" id="theaterExitBtn" title="Exit theater mode" style="display:none">✕ Exit Theater</button>
+
+          <!-- Empty State -->
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">▶</div>
+            <h2 class="empty-title">Paste a YouTube Link to Get Started</h2>
+            <p class="empty-sub">Supports videos, Shorts, and channel playlist links.</p>
+            <div class="sample-links">
+              <p class="sample-label">Try a sample:</p>
+              <a class="sample-link" href="#" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+                🎵 Sample Video — Rick Astley
+              </a>
+              <a class="sample-link" href="#" data-url="https://www.youtube.com/shorts/KCKnc7nGHqs">
+                📱 Sample Shorts — YouTube Shorts
+              </a>
+              <a class="sample-link" href="#" data-url="https://www.youtube.com/channel/UCBR8-60-B28hp2BmDPdntcQ">
+                📺 Sample Channel — YouTube Official
+              </a>
+            </div>
+          </div>
+
+          <!-- Active Player -->
+          <div class="player-wrapper" id="playerWrapper" style="display:none;">
+            <iframe
+              id="playerIframe"
+              src=""
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+              referrerpolicy="strict-origin-when-cross-origin"
+            ></iframe>
+          </div>
+
+        </div>
+
+        <!-- Player Toolbar -->
+        <div class="player-toolbar" id="playerToolbar" style="display:none;">
+          <button class="ptool-btn" id="theaterBtn" title="Theater mode">⛶ Theater</button>
+          <button class="ptool-btn" id="queueAddCurrentBtn" title="Add to queue">+ Queue</button>
+          <div class="ptool-spacer"></div>
+          <button class="ptool-btn ptool-copy" id="copyUrlBtn" title="Copy current URL">📋 Copy URL</button>
+        </div>
+
+        <!-- Channel tip -->
+        <div class="channel-tip" id="channelTip" style="display:none;">
+          💡 <strong>Desktop:</strong> click the playlist icon (≡) in the top-right of the player. &nbsp;|&nbsp;
+          <strong>Mobile:</strong> tap the <strong>"More videos"</strong> button at the bottom of the player.
+        </div>
+
+        <!-- Active URL bar -->
+        <div class="active-url-bar" id="activeUrlBar" style="display:none;">
+          <span class="active-url-label">Now playing:</span>
+          <span class="active-url-text" id="activeUrlText"></span>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- ── QUEUE SECTION ── -->
+    <section class="queue-section" id="queueSection" style="display:none;">
+      <div class="queue-header">
+        <h3 class="queue-title">▶ Watch Queue</h3>
+        <span class="queue-count-badge" id="queueCountBadge"></span>
+        <div class="queue-actions">
+          <button class="queue-action-btn" id="playNextBtn">Play Next</button>
+          <button class="queue-action-btn danger" id="clearQueueBtn">Clear</button>
+        </div>
+      </div>
+      <div class="queue-list" id="queueList"></div>
+      <div class="queue-add-row">
+        <input type="text" id="queueInput" class="queue-input" placeholder="Add a YouTube URL to the queue…" autocomplete="off" spellcheck="false" />
+        <button class="queue-add-btn" id="queueAddBtn">+ Add</button>
+      </div>
+    </section>
+
+    <!-- ── HISTORY SECTION ── -->
+    <section class="history-section" id="historySection" style="display:none;">
+      <div class="history-header">
+        <h3 class="history-title">Recent History</h3>
+        <span class="history-count" id="historyCount"></span>
+      </div>
+
+      <!-- History Toolbar -->
+      <div class="history-toolbar">
+        <div class="history-search-wrap">
+          <span class="history-search-icon">🔍</span>
+          <input type="search" id="historySearch" class="history-search" placeholder="Filter history…" autocomplete="off" />
+        </div>
+        <select id="historySort" class="history-sort">
+          <option value="recent">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="watchCount">Most watched</option>
+          <option value="progress">Has progress</option>
+          <option value="favorites">Favorites first</option>
+        </select>
+        <div class="view-toggle">
+          <button id="viewGridBtn" class="view-btn active" title="Grid view">⊞</button>
+          <button id="viewListBtn" class="view-btn" title="List view">☰</button>
+        </div>
+        <button class="htool-btn" id="exportBtn" title="Export history as JSON">↓ Export</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+        <button class="htool-btn" id="importBtn" title="Import history from JSON">↑ Import</button>
+      </div>
+
+      <div class="history-grid" id="historyGrid"></div>
+      <div class="history-empty-filter" id="historyEmptyFilter" style="display:none;">
+        No history matches your search.
+      </div>
+    </section>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
