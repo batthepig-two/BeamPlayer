@@ -13,12 +13,51 @@
 
   let currentSession     = null;
   let progressSaveTimer  = null;
-  let apiPollInterval    = null;
+  let progressInterval   = null;
+  let ytPlayer           = null;
+  let ytApiReady         = false;
+  let pendingLoad        = null;
   let currentFilter      = "";
   let currentSort        = "recent";
   let currentView        = "grid";
   let theaterMode        = false;
   let kbHintShown        = false;
+
+  /* ═══════════════════════════════════════
+     YOUTUBE IFRAME API — official SDK
+     onYouTubeIframeAPIReady is called by youtube.com/iframe_api
+     once the script finishes loading.
+  ═══════════════════════════════════════ */
+  window.onYouTubeIframeAPIReady = function () {
+    ytApiReady = true;
+    if (pendingLoad) { pendingLoad(); pendingLoad = null; }
+  };
+
+  function startProgressPolling() {
+    clearInterval(progressInterval);
+    progressInterval = setInterval(() => {
+      if (!ytPlayer || !currentSession) return;
+      try {
+        const t  = ytPlayer.getCurrentTime();
+        const d  = ytPlayer.getDuration();
+        const vd = ytPlayer.getVideoData();
+        const id = vd && vd.video_id;
+        if (id && activeUrlText)
+          activeUrlText.textContent = `https://www.youtube.com/watch?v=${id}`;
+        if (typeof t === "number" && t > 5) {
+          currentSession.seconds = Math.floor(t);
+          if (id) currentSession.resumeVideoId = id;
+          if (typeof d === "number" && d > 0) currentSession.duration = Math.floor(d);
+          scheduleProgressSave();
+        }
+      } catch (_) {}
+    }, 2000);
+  }
+
+  function stopProgressPolling() {
+    clearInterval(progressInterval);
+    progressInterval = null;
+  }
 
   /* ═══════════════════════════════════════
      DOM REFS
@@ -28,7 +67,7 @@
   const clearBtn          = document.getElementById("clearBtn");
   const emptyState        = document.getElementById("emptyState");
   const playerWrapper     = document.getElementById("playerWrapper");
-  const playerIframe      = document.getElementById("playerIframe");
+  // #playerIframe div is managed by YT.Player (string ID passed at creation)
   const channelTip        = document.getElementById("channelTip");
   const activeUrlBar      = document.getElementById("activeUrlBar");
   const activeUrlText     = document.getElementById("activeUrlText");
@@ -135,20 +174,6 @@
   }
 
   /* ═══════════════════════════════════════
-     EMBED URL BUILDER
-  ═══════════════════════════════════════ */
-  function buildEmbedUrl(parsed, startSeconds) {
-    const origin = encodeURIComponent(window.location.origin);
-    const base   = "https://www.youtube-nocookie.com/embed";
-    const start  = startSeconds > 5 ? `&start=${Math.floor(startSeconds)}` : "";
-    if (parsed.type === "video")
-      return `${base}/${parsed.id}?autoplay=1&rel=0&enablejsapi=1&origin=${origin}${start}`;
-    if (parsed.type === "channel")
-      return `${base}/videoseries?list=${parsed.playlistId}&autoplay=1&enablejsapi=1&origin=${origin}${start}`;
-    return null;
-  }
-
-  /* ═══════════════════════════════════════
      PROGRESS TRACKING
   ═══════════════════════════════════════ */
   function saveProgress() {
@@ -172,73 +197,6 @@
     progressSaveTimer = setTimeout(saveProgress, SAVE_DELAY);
   }
 
-  /* ═══════════════════════════════════════
-     YOUTUBE IFRAME API — initiate + poll
-  ═══════════════════════════════════════ */
-
-  // Send the "listening" handshake that causes YouTube to start emitting
-  // infoDelivery postMessage events back to us.
-  function sendListening() {
-    try {
-      playerIframe.contentWindow.postMessage(
-        JSON.stringify({ event: "listening", id: 1 }), "*"
-      );
-    } catch (_) {}
-  }
-
-  // Start polling: re-send listening every 3 s so we keep getting updates
-  // even if the iframe reloads internally (e.g. switching playlist items).
-  function startApiPoll() {
-    clearInterval(apiPollInterval);
-    sendListening();
-    apiPollInterval = setInterval(sendListening, 3000);
-  }
-
-  function stopApiPoll() {
-    clearInterval(apiPollInterval);
-    apiPollInterval = null;
-  }
-
-  /* ═══════════════════════════════════════
-     YOUTUBE IFRAME API — postMessage listener
-  ═══════════════════════════════════════ */
-  window.addEventListener("message", (e) => {
-    // Accept messages from any youtube/youtube-nocookie origin,
-    // or "null" which sandboxed iframes can report on some browsers.
-    const origin = e.origin || "";
-    if (origin !== "null" && !origin.includes("youtube")) return;
-
-    try {
-      const data = JSON.parse(e.data);
-      if (data.event !== "infoDelivery" || !data.info) return;
-      const info        = data.info;
-      const videoId     = info.videoData?.video_id;
-      const currentTime = typeof info.currentTime === "number" ? info.currentTime : null;
-      const duration    = typeof info.duration === "number" && info.duration > 0 ? info.duration : null;
-      const state       = typeof info.playerState === "number" ? info.playerState : null;
-
-      if (videoId && activeUrlText)
-        activeUrlText.textContent = `https://www.youtube.com/watch?v=${videoId}`;
-
-      if (currentSession && currentTime !== null && currentTime > 5) {
-        currentSession.seconds = Math.floor(currentTime);
-        if (videoId)  currentSession.resumeVideoId = videoId;
-        if (duration) currentSession.duration = Math.floor(duration);
-        scheduleProgressSave();
-      }
-
-      // Auto-play next from queue when video ends (state 0 = ended)
-      if (state === 0) {
-        const queue = loadQueue();
-        if (queue.length > 0) {
-          const next = queue.shift();
-          saveQueue(queue);
-          renderQueue();
-          setTimeout(() => loadUrl(next), 800);
-        }
-      }
-    } catch (_) {}
-  });
 
   /* ═══════════════════════════════════════
      HANDLE ERROR MODAL
@@ -284,33 +242,94 @@
   }
 
   /* ═══════════════════════════════════════
-     EMBED PLAYER
+     EMBED PLAYER — uses official YT IFrame API
+     player.getCurrentTime() is polled every 2 s
+     after the SDK calls onYouTubeIframeAPIReady.
   ═══════════════════════════════════════ */
   function embedPlayer(parsed, originalUrl, startSeconds) {
     startSeconds = startSeconds || 0;
-    const embedUrl = buildEmbedUrl(parsed, startSeconds);
-    if (!embedUrl) { showToast("⚠️ Could not build an embed URL."); return; }
 
-    // Stop any existing poll before loading new video
-    stopApiPoll();
+    // If the YT SDK hasn't loaded yet, queue the call
+    if (!ytApiReady) {
+      pendingLoad = () => embedPlayer(parsed, originalUrl, startSeconds);
+      return;
+    }
 
-    playerIframe.src     = embedUrl;
-    emptyState.style.display   = "none";
+    stopProgressPolling();
+
+    // Show player UI
+    emptyState.style.display    = "none";
     playerWrapper.style.display = "block";
     playerToolbar.style.display = "flex";
-    channelTip.style.display   = parsed.type === "channel" ? "block" : "none";
-    activeUrlBar.style.display = "flex";
-    activeUrlText.textContent  = originalUrl;
+    channelTip.style.display    = parsed.type === "channel" ? "block" : "none";
+    activeUrlBar.style.display  = "flex";
+    activeUrlText.textContent   = originalUrl;
 
-    // Once the iframe loads, send the "listening" handshake to open the
-    // postMessage channel and start the poll that keeps it alive.
-    playerIframe.addEventListener("load", startApiPoll, { once: true });
+    const isChannel  = parsed.type === "channel";
+    const videoId    = (!isChannel && parsed.id) ? parsed.id : "";
+    const playlistId = isChannel ? (parsed.playlistId || "") : "";
+
+    const playerVars = {
+      autoplay:       1,
+      rel:            0,
+      modestbranding: 1,
+      enablejsapi:    1,
+      origin:         window.location.origin,
+    };
+    if (startSeconds > 5) playerVars.start = Math.floor(startSeconds);
+
+    const onStateChange = (e) => {
+      try {
+        const vd = ytPlayer.getVideoData();
+        if (vd && vd.video_id && activeUrlText)
+          activeUrlText.textContent = `https://www.youtube.com/watch?v=${vd.video_id}`;
+      } catch (_) {}
+      // Auto-play next queue item when video ends
+      if (e.data === 0) {
+        const queue = loadQueue();
+        if (queue.length > 0) {
+          const next = queue.shift();
+          saveQueue(queue);
+          renderQueue();
+          setTimeout(() => loadUrl(next), 800);
+        }
+      }
+    };
+
+    if (ytPlayer) {
+      // Reuse existing player instance
+      if (isChannel) {
+        ytPlayer.loadPlaylist({ listType: "playlist", list: playlistId });
+      } else {
+        ytPlayer.loadVideoById({ videoId, startSeconds: startSeconds > 5 ? startSeconds : 0 });
+      }
+      startProgressPolling();
+    } else {
+      // Create player on the #playerIframe div for the first time
+      if (isChannel) {
+        playerVars.listType = "playlist";
+        playerVars.list     = playlistId;
+      }
+      ytPlayer = new YT.Player("playerIframe", {
+        videoId,
+        playerVars,
+        host: "https://www.youtube-nocookie.com",
+        events: {
+          onReady: (e) => {
+            if (isChannel)
+              e.target.loadPlaylist({ listType: "playlist", list: playlistId });
+            startProgressPolling();
+          },
+          onStateChange,
+        },
+      });
+    }
 
     currentSession = {
       originalUrl,
       type:          parsed.type,
-      playlistId:    parsed.playlistId || null,
-      resumeVideoId: parsed.id || null,
+      playlistId:    playlistId || null,
+      resumeVideoId: videoId   || null,
       seconds:       startSeconds,
       duration:      0,
     };
