@@ -400,7 +400,7 @@
     const blob = new Blob([JSON.stringify(history, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `yt2-history-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `beamplayer-history-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     showToast(`Exported ${history.length} items ✓`);
@@ -422,7 +422,7 @@
         renderHistory();
         showToast(`Imported ${imported.length} items ✓`);
       } catch {
-        showToast("❌ Invalid file. Must be a BeamPlayer history export.");
+        showToast("Invalid file. Must be a BeamPlayer history export.");
       }
     };
     reader.readAsText(file);
