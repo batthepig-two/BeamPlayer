@@ -169,7 +169,10 @@ kbd {
 
 /* ── PLAYER WRAPPER ── */
 .player-wrapper { flex: 1; position: relative; width: 100%; padding-top: 56.25%; background: #000; }
+/* #playerIframe is a div that YT.Player replaces with an <iframe> */
+.player-wrapper #playerIframe,
 .player-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: block; }
+#playerIframe iframe  { width: 100%; height: 100%; border: none; display: block; }
 
 /* ── PLAYER TOOLBAR ── */
 .player-toolbar {
