@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BeamPlayer</title>
-    <meta name="description" content="A beautiful YouTube video player with history, favorites, queue, and progress tracking." />
+    <meta name="description" content="BeamPlayer — a beautiful YouTube video player with history, favorites, queue, and progress tracking." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet" />
@@ -16,7 +16,7 @@
     <nav class="navbar" id="navbar">
       <div class="navbar-brand">
         <span class="brand-icon">▶</span>
-        <span class="brand-text">Beam <span class="brand-accent">Player</span></span>
+        <span class="brand-text">Beam<span class="brand-accent">Player</span></span>
       </div>
       <div class="search-hub">
         <input type="text" id="urlInput" class="url-input"
@@ -29,6 +29,7 @@
 
     <!-- ── KEYBOARD HINT ── -->
     <div class="kb-hint" id="kbHint" style="display:none">
+      ⌨️ Tip: Press <kbd>Ctrl+V</kbd> (or <kbd>⌘V</kbd> on Mac) anywhere on this page to instantly load a copied YouTube URL.
       <button class="kb-hint-close" id="kbHintClose">✕</button>
     </div>
 
@@ -127,7 +128,7 @@
       <!-- History Toolbar -->
       <div class="history-toolbar">
         <div class="history-search-wrap">
-          <span class="history-search-icon">🔍</span>
+          <span class="history-search-icon">&#x2315;</span>
           <input type="search" id="historySearch" class="history-search" placeholder="Filter history…" autocomplete="off" />
         </div>
         <select id="historySort" class="history-sort">
@@ -138,8 +139,8 @@
           <option value="favorites">Favorites first</option>
         </select>
         <div class="view-toggle">
-          <button id="viewGridBtn" class="view-btn active" title="Grid view">⊞</button>
-          <button id="viewListBtn" class="view-btn" title="List view">☰</button>
+          <button id="viewGridBtn" class="view-btn active" title="Grid view">Grid</button>
+          <button id="viewListBtn" class="view-btn" title="List view">List</button>
         </div>
         <button class="htool-btn" id="exportBtn" title="Export history as JSON">↓ Export</button>
         <input type="file" id="importFile" accept=".json" style="display:none" />
