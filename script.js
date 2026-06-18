@@ -11,13 +11,14 @@
   const MAX_HISTORY = 100;
   const SAVE_DELAY  = 4000;
 
-  let currentSession    = null;
-  let progressSaveTimer = null;
-  let currentFilter     = "";
-  let currentSort       = "recent";
-  let currentView       = "grid";
-  let theaterMode       = false;
-  let kbHintShown       = false;
+  let currentSession     = null;
+  let progressSaveTimer  = null;
+  let apiPollInterval    = null;
+  let currentFilter      = "";
+  let currentSort        = "recent";
+  let currentView        = "grid";
+  let theaterMode        = false;
+  let kbHintShown        = false;
 
   /* ═══════════════════════════════════════
      DOM REFS
@@ -172,10 +173,41 @@
   }
 
   /* ═══════════════════════════════════════
+     YOUTUBE IFRAME API — initiate + poll
+  ═══════════════════════════════════════ */
+
+  // Send the "listening" handshake that causes YouTube to start emitting
+  // infoDelivery postMessage events back to us.
+  function sendListening() {
+    try {
+      playerIframe.contentWindow.postMessage(
+        JSON.stringify({ event: "listening", id: 1 }), "*"
+      );
+    } catch (_) {}
+  }
+
+  // Start polling: re-send listening every 3 s so we keep getting updates
+  // even if the iframe reloads internally (e.g. switching playlist items).
+  function startApiPoll() {
+    clearInterval(apiPollInterval);
+    sendListening();
+    apiPollInterval = setInterval(sendListening, 3000);
+  }
+
+  function stopApiPoll() {
+    clearInterval(apiPollInterval);
+    apiPollInterval = null;
+  }
+
+  /* ═══════════════════════════════════════
      YOUTUBE IFRAME API — postMessage listener
   ═══════════════════════════════════════ */
   window.addEventListener("message", (e) => {
-    if (!e.origin.includes("youtube")) return;
+    // Accept messages from any youtube/youtube-nocookie origin,
+    // or "null" which sandboxed iframes can report on some browsers.
+    const origin = e.origin || "";
+    if (origin !== "null" && !origin.includes("youtube")) return;
+
     try {
       const data = JSON.parse(e.data);
       if (data.event !== "infoDelivery" || !data.info) return;
@@ -259,6 +291,9 @@
     const embedUrl = buildEmbedUrl(parsed, startSeconds);
     if (!embedUrl) { showToast("⚠️ Could not build an embed URL."); return; }
 
+    // Stop any existing poll before loading new video
+    stopApiPoll();
+
     playerIframe.src     = embedUrl;
     emptyState.style.display   = "none";
     playerWrapper.style.display = "block";
@@ -266,6 +301,10 @@
     channelTip.style.display   = parsed.type === "channel" ? "block" : "none";
     activeUrlBar.style.display = "flex";
     activeUrlText.textContent  = originalUrl;
+
+    // Once the iframe loads, send the "listening" handshake to open the
+    // postMessage channel and start the poll that keeps it alive.
+    playerIframe.addEventListener("load", startApiPoll, { once: true });
 
     currentSession = {
       originalUrl,
