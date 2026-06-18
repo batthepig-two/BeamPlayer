@@ -63,17 +63,9 @@
             </div>
           </div>
 
-          <!-- Active Player -->
+          <!-- Active Player — div replaced by YT.Player iframe at runtime -->
           <div class="player-wrapper" id="playerWrapper" style="display:none;">
-            <iframe
-              id="playerIframe"
-              src=""
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-              referrerpolicy="strict-origin-when-cross-origin"
-            ></iframe>
+            <div id="playerIframe"></div>
           </div>
 
         </div>
@@ -153,6 +145,8 @@
       </div>
     </section>
 
+    <!-- Official YouTube IFrame API — enables reliable getCurrentTime() polling -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="./script.js"></script>
   </body>
 </html>
