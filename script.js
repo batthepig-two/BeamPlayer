@@ -11,11 +11,15 @@
   const MAX_HISTORY = 100;
   const SAVE_DELAY  = 4000;
 
-  const PIPED_INSTANCES = [
-    "https://pipedapi.kavin.rocks",
-    "https://pipedapi.adminforge.de",
-    "https://piped-api.garudalinux.org",
-  ];
+  const YT_API_KEY_STORAGE = "yt2_api_key";
+  const YT_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
+
+  function getApiKey() {
+    return localStorage.getItem(YT_API_KEY_STORAGE) || "";
+  }
+  function saveApiKey(k) {
+    localStorage.setItem(YT_API_KEY_STORAGE, k.trim());
+  }
 
   let currentSession     = null;
   let progressSaveTimer  = null;
@@ -267,28 +271,104 @@
     searchBackdrop.style.display = "none";
   }
 
+  function showApiKeyPrompt(query) {
+    searchQueryLabel.textContent = query || "";
+    searchResultsList.innerHTML = `
+      <div class="apikey-prompt">
+        <div class="apikey-icon">🔑</div>
+        <h3 class="apikey-title">YouTube API Key Required</h3>
+        <p class="apikey-body">Search uses the official YouTube Data API. Your key is stored only in <em>your</em> browser — it's never sent anywhere else.</p>
+        <ol class="apikey-steps">
+          <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → Credentials</a></li>
+          <li>Create a project → Enable <strong>YouTube Data API v3</strong> → Create an <strong>API Key</strong></li>
+          <li>Paste it below and click Save</li>
+        </ol>
+        <div class="apikey-input-row">
+          <input id="apiKeyInput" class="apikey-input" type="text" placeholder="AIza…" spellcheck="false" autocomplete="off" />
+          <button id="apiKeySave" class="apikey-save-btn">Save & Search</button>
+        </div>
+        <p class="apikey-note">Free tier: 100 searches/day. <a href="https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas" target="_blank" rel="noopener">Check quota</a></p>
+      </div>`;
+    searchPanel.style.display   = "block";
+    searchBackdrop.style.display = "block";
+
+    const input = document.getElementById("apiKeyInput");
+    const save  = document.getElementById("apiKeySave");
+    save.addEventListener("click", () => {
+      const k = input.value.trim();
+      if (!k.startsWith("AIza")) { input.classList.add("apikey-input--error"); return; }
+      input.classList.remove("apikey-input--error");
+      saveApiKey(k);
+      if (query) doSearch(query);
+    });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") save.click(); });
+    input.focus();
+  }
+
   async function doSearch(query) {
+    const key = getApiKey();
+    if (!key) { showApiKeyPrompt(query); return; }
+
     searchQueryLabel.textContent = query;
     searchResultsList.innerHTML  = `<div class="search-status spinning">Searching…</div>`;
     searchPanel.style.display   = "block";
     searchBackdrop.style.display = "block";
 
-    let items = null;
-    for (const base of PIPED_INSTANCES) {
-      try {
-        const r = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=all`);
-        if (!r.ok) continue;
-        const data = await r.json();
-        if (data.items && data.items.length) { items = data.items; break; }
-      } catch (_) {}
-    }
+    try {
+      const url = `${YT_SEARCH_URL}?part=snippet&q=${encodeURIComponent(query)}&type=video,channel&maxResults=25&key=${key}`;
+      const r   = await fetch(url);
+      const data = await r.json();
 
-    if (!items) {
+      if (data.error) {
+        const msg = data.error.message || "API error";
+        const isKey = data.error.status === "API_KEY_INVALID" || msg.toLowerCase().includes("key");
+        searchResultsList.innerHTML = `
+          <div class="search-status">
+            ⚠️ ${msg}<br>
+            ${isKey ? `<button class="apikey-reenter-btn" id="reenterKeyBtn">Re-enter API key</button>` : ""}
+          </div>`;
+        document.getElementById("reenterKeyBtn")?.addEventListener("click", () => {
+          localStorage.removeItem(YT_API_KEY_STORAGE);
+          showApiKeyPrompt(query);
+        });
+        return;
+      }
+
+      const items = (data.items || []).map(item => {
+        const s   = item.snippet || {};
+        const kind = item.id.kind;
+        if (kind === "youtube#video") {
+          return {
+            type:         "stream",
+            url:          `/watch?v=${item.id.videoId}`,
+            title:        s.title,
+            thumbnail:    s.thumbnails?.medium?.url || s.thumbnails?.default?.url || "",
+            uploaderName: s.channelTitle,
+            uploadedDate: s.publishedAt ? new Date(s.publishedAt).toLocaleDateString() : "",
+            views:        0,
+            duration:     0,
+            shortDescription: s.description,
+          };
+        }
+        if (kind === "youtube#channel") {
+          return {
+            type:        "channel",
+            url:         `/channel/${item.id.channelId}`,
+            name:        s.title,
+            thumbnail:   s.thumbnails?.medium?.url || s.thumbnails?.default?.url || "",
+            description: s.description,
+            subscribers: 0,
+            videos:      0,
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      openSearchPanel(items, query);
+    } catch (err) {
       searchResultsList.innerHTML =
-        `<div class="search-status">⚠️ Search unavailable right now. Try pasting a YouTube URL directly.</div>`;
-      return;
+        `<div class="search-status">⚠️ Search failed. Check your connection and try again.</div>`;
     }
-    openSearchPanel(items, query);
   }
 
   /* ═══════════════════════════════════════
@@ -862,6 +942,7 @@
   searchPanelClose.addEventListener("click", closeSearchPanel);
   searchBackdrop.addEventListener("click",   closeSearchPanel);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeSearchPanel(); });
+  document.getElementById("searchApiKeyBtn").addEventListener("click", () => showApiKeyPrompt(""));
 
   // Clear history
   clearBtn.addEventListener("click", () => {
