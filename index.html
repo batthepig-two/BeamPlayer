@@ -20,12 +20,26 @@
       </div>
       <div class="search-hub">
         <input type="text" id="urlInput" class="url-input"
-          placeholder="Paste a YouTube video, Shorts, or channel URL…"
+          placeholder="Search YouTube or paste a URL…"
           autocomplete="off" spellcheck="false" />
         <button id="loadBtn" class="load-btn">Load</button>
         <button id="clearBtn" class="clear-btn" title="Clear all history">Clear History</button>
       </div>
     </nav>
+
+    <!-- ── SEARCH RESULTS PANEL ── -->
+    <div class="search-panel" id="searchPanel" style="display:none;">
+      <div class="search-panel-header">
+        <span class="search-panel-label">Results for "<span id="searchQueryLabel"></span>"</span>
+        <div class="search-panel-actions">
+          <span class="search-panel-credit">via Piped API</span>
+          <button class="search-panel-close" id="searchPanelClose" title="Close">✕</button>
+        </div>
+      </div>
+      <div id="searchResultsList"></div>
+    </div>
+    <!-- ── SEARCH BACKDROP ── -->
+    <div class="search-backdrop" id="searchBackdrop" style="display:none;"></div>
 
     <!-- ── KEYBOARD HINT ── -->
     <div class="kb-hint" id="kbHint" style="display:none">
