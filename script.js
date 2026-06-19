@@ -11,6 +11,12 @@
   const MAX_HISTORY = 100;
   const SAVE_DELAY  = 4000;
 
+  const PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://pipedapi.adminforge.de",
+    "https://piped-api.garudalinux.org",
+  ];
+
   let currentSession     = null;
   let progressSaveTimer  = null;
   let progressInterval   = null;
@@ -96,6 +102,11 @@
   const queueAddBtn       = document.getElementById("queueAddBtn");
   const kbHint            = document.getElementById("kbHint");
   const kbHintClose       = document.getElementById("kbHintClose");
+  const searchPanel       = document.getElementById("searchPanel");
+  const searchBackdrop    = document.getElementById("searchBackdrop");
+  const searchResultsList = document.getElementById("searchResultsList");
+  const searchQueryLabel  = document.getElementById("searchQueryLabel");
+  const searchPanelClose  = document.getElementById("searchPanelClose");
 
   /* ═══════════════════════════════════════
      TOAST
@@ -171,6 +182,92 @@
       return { type: "handle_unsupported", url };
     }
     return null;
+  }
+
+  /* ═══════════════════════════════════════
+     SEARCH — Piped API (no key required)
+  ═══════════════════════════════════════ */
+  function fmtSeconds(s) {
+    if (!s || s < 0) return "LIVE";
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+    return `${m}:${String(sec).padStart(2,"0")}`;
+  }
+
+  function fmtViews(n) {
+    if (!n) return "";
+    if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, "") + "B views";
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M views";
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K views";
+    return n + " views";
+  }
+
+  function openSearchPanel(items, query) {
+    searchQueryLabel.textContent = query;
+    searchResultsList.innerHTML  = "";
+
+    const streams = (items || []).filter(i => i.type === "stream").slice(0, 25);
+    if (!streams.length) {
+      searchResultsList.innerHTML = `<div class="search-status">No results found for "<strong>${query}</strong>".</div>`;
+    } else {
+      streams.forEach(item => {
+        const videoUrl = `https://www.youtube.com${item.url}`;
+        const el = document.createElement("div");
+        el.className = "search-result";
+        el.innerHTML = `
+          <div class="search-result-thumb-wrap">
+            <img class="search-result-thumb" src="${item.thumbnail || ""}" alt="" loading="lazy" />
+            <span class="search-result-dur">${fmtSeconds(item.duration)}</span>
+          </div>
+          <div class="search-result-info">
+            <div class="search-result-title">${item.title || ""}</div>
+            <div class="search-result-meta">
+              <span class="search-result-channel">${item.uploaderName || ""}</span>
+              ${item.views     ? `<span>${fmtViews(item.views)}</span>` : ""}
+              ${item.uploadedDate ? `<span>${item.uploadedDate}</span>` : ""}
+            </div>
+            ${item.shortDescription
+              ? `<div class="search-result-desc">${item.shortDescription.slice(0, 120)}…</div>`
+              : ""}
+          </div>`;
+        el.addEventListener("click", () => { closeSearchPanel(); loadUrl(videoUrl); });
+        searchResultsList.appendChild(el);
+      });
+    }
+
+    searchPanel.style.display   = "block";
+    searchBackdrop.style.display = "block";
+  }
+
+  function closeSearchPanel() {
+    searchPanel.style.display   = "none";
+    searchBackdrop.style.display = "none";
+  }
+
+  async function doSearch(query) {
+    searchQueryLabel.textContent = query;
+    searchResultsList.innerHTML  = `<div class="search-status spinning">Searching…</div>`;
+    searchPanel.style.display   = "block";
+    searchBackdrop.style.display = "block";
+
+    let items = null;
+    for (const base of PIPED_INSTANCES) {
+      try {
+        const r = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=videos`);
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (data.items && data.items.length) { items = data.items; break; }
+      } catch (_) {}
+    }
+
+    if (!items) {
+      searchResultsList.innerHTML =
+        `<div class="search-status">⚠️ Search unavailable right now. Try pasting a YouTube URL directly.</div>`;
+      return;
+    }
+    openSearchPanel(items, query);
   }
 
   /* ═══════════════════════════════════════
@@ -347,7 +444,7 @@
     const trimmed = raw.trim();
     if (!trimmed) return;
     const parsed = parseYouTubeUrl(trimmed);
-    if (!parsed) { showToast("⚠️ Couldn't recognise that URL. Try a YouTube video, Shorts, or /channel/UC… link."); return; }
+    if (!parsed) { doSearch(trimmed); return; }
     if (parsed.type === "handle_unsupported") { showHandleError(); return; }
     embedPlayer(parsed, trimmed, 0);
   }
@@ -731,7 +828,7 @@
   // Load button
   loadBtn.addEventListener("click", () => {
     if (urlInput.value.trim()) loadUrl(urlInput.value);
-    else showToast("Paste a YouTube URL first!");
+    else showToast("Type a search term or paste a YouTube URL.");
   });
 
   urlInput.addEventListener("keydown", e => { if (e.key === "Enter") loadBtn.click(); });
@@ -739,6 +836,11 @@
   urlInput.addEventListener("paste", () => {
     setTimeout(() => { const v = urlInput.value.trim(); if (v.startsWith("http")) loadUrl(v); }, 50);
   });
+
+  // Search panel close
+  searchPanelClose.addEventListener("click", closeSearchPanel);
+  searchBackdrop.addEventListener("click",   closeSearchPanel);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeSearchPanel(); });
 
   // Clear history
   clearBtn.addEventListener("click", () => {
