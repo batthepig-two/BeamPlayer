@@ -208,31 +208,52 @@
     searchQueryLabel.textContent = query;
     searchResultsList.innerHTML  = "";
 
-    const streams = (items || []).filter(i => i.type === "stream").slice(0, 25);
-    if (!streams.length) {
+    const relevant = (items || []).filter(i => i.type === "stream" || i.type === "channel").slice(0, 25);
+    if (!relevant.length) {
       searchResultsList.innerHTML = `<div class="search-status">No results found for "<strong>${query}</strong>".</div>`;
     } else {
-      streams.forEach(item => {
-        const videoUrl = `https://www.youtube.com${item.url}`;
+      relevant.forEach(item => {
+        const itemUrl = `https://www.youtube.com${item.url}`;
         const el = document.createElement("div");
-        el.className = "search-result";
-        el.innerHTML = `
-          <div class="search-result-thumb-wrap">
-            <img class="search-result-thumb" src="${item.thumbnail || ""}" alt="" loading="lazy" />
-            <span class="search-result-dur">${fmtSeconds(item.duration)}</span>
-          </div>
-          <div class="search-result-info">
-            <div class="search-result-title">${item.title || ""}</div>
-            <div class="search-result-meta">
-              <span class="search-result-channel">${item.uploaderName || ""}</span>
-              ${item.views     ? `<span>${fmtViews(item.views)}</span>` : ""}
-              ${item.uploadedDate ? `<span>${item.uploadedDate}</span>` : ""}
+
+        if (item.type === "channel") {
+          el.className = "search-result search-result--channel";
+          const subs   = item.subscribers > 0 ? fmtViews(item.subscribers).replace(" views", " subscribers") : "";
+          const videos = item.videos > 0 ? `${item.videos} videos` : "";
+          el.innerHTML = `
+            <div class="search-result-thumb-wrap search-result-thumb-wrap--avatar">
+              <img class="search-result-thumb search-result-thumb--avatar" src="${item.thumbnail || ""}" alt="" loading="lazy" />
             </div>
-            ${item.shortDescription
-              ? `<div class="search-result-desc">${item.shortDescription.slice(0, 120)}…</div>`
-              : ""}
-          </div>`;
-        el.addEventListener("click", () => { closeSearchPanel(); loadUrl(videoUrl); });
+            <div class="search-result-info">
+              <div class="search-result-badge">📺 Channel</div>
+              <div class="search-result-title">${item.name || ""}</div>
+              <div class="search-result-meta">
+                ${subs   ? `<span>${subs}</span>`   : ""}
+                ${videos ? `<span>${videos}</span>` : ""}
+              </div>
+              ${item.description ? `<div class="search-result-desc">${item.description.slice(0, 120)}…</div>` : ""}
+            </div>`;
+        } else {
+          el.className = "search-result";
+          el.innerHTML = `
+            <div class="search-result-thumb-wrap">
+              <img class="search-result-thumb" src="${item.thumbnail || ""}" alt="" loading="lazy" />
+              <span class="search-result-dur">${fmtSeconds(item.duration)}</span>
+            </div>
+            <div class="search-result-info">
+              <div class="search-result-title">${item.title || ""}</div>
+              <div class="search-result-meta">
+                <span class="search-result-channel">${item.uploaderName || ""}</span>
+                ${item.views      ? `<span>${fmtViews(item.views)}</span>` : ""}
+                ${item.uploadedDate ? `<span>${item.uploadedDate}</span>` : ""}
+              </div>
+              ${item.shortDescription
+                ? `<div class="search-result-desc">${item.shortDescription.slice(0, 120)}…</div>`
+                : ""}
+            </div>`;
+        }
+
+        el.addEventListener("click", () => { closeSearchPanel(); loadUrl(itemUrl); });
         searchResultsList.appendChild(el);
       });
     }
@@ -255,7 +276,7 @@
     let items = null;
     for (const base of PIPED_INSTANCES) {
       try {
-        const r = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=videos`);
+        const r = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=all`);
         if (!r.ok) continue;
         const data = await r.json();
         if (data.items && data.items.length) { items = data.items; break; }
