@@ -617,6 +617,57 @@ kbd {
   font-size: 12px; color: var(--gray-600); margin-top: 5px; line-height: 1.4;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.search-api-key-btn {
+  background: none; border: 1px solid var(--slate-border); cursor: pointer;
+  color: var(--gray-500); font-size: 12px; padding: 3px 8px; border-radius: 4px;
+  transition: color var(--transition), border-color var(--transition);
+}
+.search-api-key-btn:hover { color: var(--white); border-color: var(--gray-500); }
+
+/* ── API KEY PROMPT ── */
+.apikey-prompt {
+  padding: 32px 28px 28px; max-width: 560px; margin: 0 auto;
+}
+.apikey-icon { font-size: 36px; margin-bottom: 12px; }
+.apikey-title { font-size: 18px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+.apikey-body { font-size: 14px; color: var(--gray-300); line-height: 1.6; margin-bottom: 16px; }
+.apikey-steps {
+  background: var(--slate-light); border: 1px solid var(--slate-border);
+  border-radius: var(--radius-sm); padding: 14px 14px 14px 30px;
+  margin-bottom: 20px; font-size: 14px; color: var(--gray-300); line-height: 1.8;
+}
+.apikey-steps a { color: var(--rose-light); text-decoration: none; }
+.apikey-steps a:hover { text-decoration: underline; }
+.apikey-steps strong { color: var(--white); }
+.apikey-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.apikey-input {
+  flex: 1; height: 40px; padding: 0 14px;
+  background: var(--slate); border: 1.5px solid var(--slate-border); border-radius: var(--radius-sm);
+  color: var(--white); font-family: var(--font); font-size: 14px; outline: none;
+  transition: border-color var(--transition);
+}
+.apikey-input:focus { border-color: var(--rose); }
+.apikey-input--error { border-color: #f05a72 !important; }
+.apikey-save-btn {
+  height: 40px; padding: 0 20px;
+  background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+  color: var(--white); border: none; border-radius: var(--radius-sm);
+  font-family: var(--font); font-size: 14px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: opacity var(--transition);
+}
+.apikey-save-btn:hover { opacity: 0.88; }
+.apikey-note { font-size: 12px; color: var(--gray-600); }
+.apikey-note a { color: var(--gray-500); text-decoration: none; }
+.apikey-note a:hover { color: var(--white); }
+.apikey-reenter-btn {
+  display: inline-block; margin-top: 10px; padding: 6px 14px;
+  background: var(--slate-light); border: 1px solid var(--slate-border);
+  color: var(--white); border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; font-family: var(--font);
+}
+.apikey-reenter-btn:hover { border-color: var(--rose); }
+
 .search-result-badge {
   font-size: 11px; font-weight: 600; color: var(--rose-light);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
