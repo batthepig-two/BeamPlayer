@@ -9,6 +9,8 @@
   const QUEUE_KEY      = "yt2_queue";
   const PREFS_KEY      = "yt2_prefs";
   const PLAYLISTS_KEY  = "yt2_playlists";
+  const TITLES_KEY     = "yt2_titles";
+  const TITLE_TTL      = 7 * 24 * 60 * 60 * 1000; // 7 days
   const MAX_HISTORY    = 100;
   const SAVE_DELAY     = 4000;
 
@@ -775,6 +777,81 @@
   }
 
   /* ═══════════════════════════════════════
+     TITLE CACHE  (YouTube oEmbed, no API key)
+  ═══════════════════════════════════════ */
+  function loadTitleCache() {
+    try { return JSON.parse(localStorage.getItem(TITLES_KEY)) || {}; } catch { return {}; }
+  }
+  function saveTitleCache(cache) {
+    try { localStorage.setItem(TITLES_KEY, JSON.stringify(cache)); } catch {}
+  }
+  function getCachedTitle(videoId) {
+    if (!videoId) return null;
+    const entry = loadTitleCache()[videoId];
+    if (!entry) return null;
+    if (Date.now() - entry.fetchedAt > TITLE_TTL) return null;
+    return entry;
+  }
+  async function fetchVideoTitle(videoId) {
+    if (!videoId) return null;
+    const cached = getCachedTitle(videoId);
+    if (cached) return cached;
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+        "https://www.youtube.com/watch?v=" + videoId)}&format=json`;
+      const r = await fetch(oembedUrl);
+      if (!r.ok) return null;
+      const data = await r.json();
+      const entry = { title: data.title || null, author: data.author_name || null, fetchedAt: Date.now() };
+      const cache = loadTitleCache();
+      cache[videoId] = entry;
+      saveTitleCache(cache);
+      return entry;
+    } catch { return null; }
+  }
+  async function fetchPendingTitles() {
+    // Collect all data-vid elements without a loaded title
+    const wraps = [...document.querySelectorAll("[data-vid]:not([data-title-loaded])")];
+    const seen  = new Set();
+    const queue = [];
+    wraps.forEach(el => {
+      const vid = el.dataset.vid;
+      if (!vid || seen.has(vid)) return;
+      seen.add(vid);
+      if (!getCachedTitle(vid)) queue.push({ vid, els: [] });
+    });
+    // Group elements by vid
+    wraps.forEach(el => {
+      const vid = el.dataset.vid;
+      const entry = queue.find(q => q.vid === vid);
+      if (entry) entry.els.push(el);
+    });
+    // Fetch staggered
+    for (let i = 0; i < queue.length; i++) {
+      await new Promise(r => setTimeout(r, i * 70));
+      const { vid, els } = queue[i];
+      fetchVideoTitle(vid).then(info => {
+        if (!info?.title) return;
+        document.querySelectorAll(`[data-vid="${vid}"]`).forEach(wrap => {
+          wrap.dataset.titleLoaded = "1";
+          const t = wrap.querySelector(".history-card-title, .playlist-item-title");
+          if (t) t.textContent = info.title;
+          if (info.author && !wrap.querySelector(".history-card-author, .playlist-item-author")) {
+            const a = document.createElement("div");
+            a.className = wrap.querySelector(".history-card-title") ? "history-card-author" : "playlist-item-author";
+            a.textContent = info.author;
+            wrap.appendChild(a);
+          }
+        });
+      });
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  /* ═══════════════════════════════════════
      EXPORT / IMPORT
   ═══════════════════════════════════════ */
   function exportHistory() {
@@ -952,7 +1029,10 @@
                <div class="thumb-fallback" style="display:none;font-size:16px">▶</div>`
             : `<div class="thumb-fallback" style="font-size:16px">▶</div>`}
         </div>
-        <span class="playlist-item-url" title="${item.url}">${shortUrl}</span>
+        <div class="playlist-item-info" data-vid="${item.videoId || ''}">
+          <div class="playlist-item-title">${(() => { const c = item.videoId ? getCachedTitle(item.videoId) : null; return c?.title ? escapeHtml(c.title) : shortUrl; })()}</div>
+          ${(() => { const c = item.videoId ? getCachedTitle(item.videoId) : null; return c?.author ? `<div class="playlist-item-author">${escapeHtml(c.author)}</div>` : ''; })()}
+        </div>
         <button class="playlist-item-play" title="Play now">▶</button>
         <button class="playlist-item-remove" title="Remove">✕</button>
       `;
@@ -975,6 +1055,8 @@
 
       playlistDetailList.appendChild(row);
     });
+
+    fetchPendingTitles();
   }
 
   function showPlaylistsSection() {
@@ -1141,7 +1223,10 @@
             <button class="card-action-btn watch-btn ${item.watched ? "active" : ""}"
               data-url="${item.url}" title="${item.watched ? "Unmark watched" : "Mark as watched"}">✓</button>
           </div>
-          <div class="history-card-url" title="${item.url}">${shortUrl}</div>
+          <div class="history-card-title-wrap" data-vid="${item.videoId || ''}">
+            <div class="history-card-title">${(() => { const c = item.videoId ? getCachedTitle(item.videoId) : null; return c?.title ? escapeHtml(c.title) : shortUrl; })()}</div>
+            ${(() => { const c = item.videoId ? getCachedTitle(item.videoId) : null; return c?.author ? `<div class="history-card-author">${escapeHtml(c.author)}</div>` : ''; })()}
+          </div>
           <div class="history-card-bottom-row">
             ${progressLabel
               ? `<span class="history-card-progress">⏱ ${progressLabel}</span>`
@@ -1210,6 +1295,8 @@
 
       historyGrid.appendChild(card);
     });
+
+    fetchPendingTitles();
   }
 
   /* ═══════════════════════════════════════
