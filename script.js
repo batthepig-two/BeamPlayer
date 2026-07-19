@@ -1425,8 +1425,9 @@
     if (e.target === importUrlsModal) importUrlsModal.style.display = "none";
   });
   importUrlsConfirm.addEventListener("click", () => {
-    // Split on https:// boundaries so concatenated URLs (no newlines) still work
-    const raw   = importUrlsTextarea.value;
+    // Decode %0A/%0D (URL-encoded newlines added by playlist exporters), then
+    // split on https:// boundaries so concatenated URLs all get separated cleanly
+    const raw   = importUrlsTextarea.value.replace(/%0D/gi, "").replace(/%0A/gi, "\n");
     const lines = raw.split(/(?=https?:\/\/)/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s));
     if (!lines.length) { showToast("Paste at least one URL."); return; }
     const added = importUrlsToPlaylist(importUrlsTarget, lines);
