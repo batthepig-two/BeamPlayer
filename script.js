@@ -1425,7 +1425,9 @@
     if (e.target === importUrlsModal) importUrlsModal.style.display = "none";
   });
   importUrlsConfirm.addEventListener("click", () => {
-    const lines = importUrlsTextarea.value.split("\n").map(l => l.trim()).filter(Boolean);
+    // Split on https:// boundaries so concatenated URLs (no newlines) still work
+    const raw   = importUrlsTextarea.value;
+    const lines = raw.split(/(?=https?:\/\/)/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s));
     if (!lines.length) { showToast("Paste at least one URL."); return; }
     const added = importUrlsToPlaylist(importUrlsTarget, lines);
     importUrlsModal.style.display = "none";
