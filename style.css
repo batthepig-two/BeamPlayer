@@ -430,6 +430,18 @@ kbd {
 .card-link-btn.reset-btn:hover { color: var(--rose-light); border-color: var(--rose); }
 .card-link-btn.pl-btn:hover    { color: #a0b8f0; border-color: #3a5adf; }
 
+/* Card title (fetched from oEmbed) */
+.history-card-title-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.history-card-title {
+  font-size: 13px; font-weight: 600; color: var(--white);
+  line-height: 1.35; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.history-card-author {
+  font-size: 11px; color: var(--gray-500);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* Delete button */
 .history-card-delete {
   position: absolute; top: 6px; right: 6px;
@@ -753,6 +765,18 @@ kbd {
   transition: opacity var(--transition); white-space: nowrap;
 }
 .save-playlist-add-btn:hover { opacity: 0.85; }
+
+/* ── PLAYLIST ITEM TITLE (fetched from oEmbed) ── */
+.playlist-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.playlist-item-title {
+  font-size: 13px; font-weight: 500; color: var(--white);
+  line-height: 1.35; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.playlist-item-author {
+  font-size: 11px; color: var(--gray-500);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* ── IMPORT URLS MODAL ── */
 .import-urls-textarea {
