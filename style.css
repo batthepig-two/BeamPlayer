@@ -63,6 +63,17 @@ html, body {
 .brand-text   { font-size: 20px; font-weight: 700; color: var(--white); letter-spacing: -0.3px; }
 .brand-accent { color: var(--rose-light); }
 
+/* ── NAVBAR ACTIONS ── */
+.navbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.nav-action-btn {
+  height: 42px; padding: 0 16px;
+  background: transparent; border: 1.5px solid var(--slate-border); border-radius: var(--radius-sm);
+  color: var(--gray-500); font-family: var(--font); font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px;
+  transition: color var(--transition), border-color var(--transition);
+}
+.nav-action-btn:hover { color: var(--gray-300); border-color: var(--gray-600); }
+
 /* ── SEARCH HUB ── */
 .search-hub { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 800px; }
 .url-input {
@@ -756,29 +767,78 @@ kbd {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
-  .main-layout   { padding: 16px 16px 0; }
-  .queue-section { padding: 0 16px; }
-  .history-section { padding: 0 16px; }
-  .playlists-section { padding: 0 16px; }
+  .main-layout             { padding: 16px 16px 0; }
+  .queue-section           { padding: 0 16px; }
+  .history-section         { padding: 0 16px; }
+  .playlists-section       { padding: 0 16px; }
   .playlist-detail-section { padding: 0 16px; }
-  .navbar        { padding: 12px 16px; gap: 12px; }
-  .history-grid  { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-  .playlists-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .navbar                  { padding: 12px 16px; gap: 10px; }
+  .history-grid            { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .playlists-grid          { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
 
-@media (max-width: 600px) {
-  .navbar { flex-wrap: wrap; padding: 10px 12px; }
-  .search-hub { max-width: 100%; gap: 6px; }
-  .url-input { font-size: 13px; }
-  .load-btn  { padding: 0 14px; }
-  .history-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .playlists-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-  .player-toolbar { gap: 6px; }
-  .ptool-btn { padding: 0 10px; font-size: 12px; }
-  .modal-box { padding: 24px 18px 20px; }
+@media (max-width: 640px) {
+  /* ── Navbar: brand + actions on row 1, search on row 2 ── */
+  .navbar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .navbar-brand  { flex: 1; }
+  .navbar-actions { flex-shrink: 0; gap: 6px; }
+  .search-hub {
+    order: 10;         /* push below brand row */
+    flex-basis: 100%;  /* full width */
+    max-width: 100%;
+    gap: 8px;
+  }
+  .url-input  { font-size: 14px; height: 40px; }
+  .load-btn   { height: 40px; padding: 0 16px; flex-shrink: 0; }
+
+  /* nav action buttons: icon + short label, no overflow */
+  .nav-action-btn {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+    gap: 4px;
+  }
+  /* Hide the text label, keep the icon only on very small screens */
+  @media (max-width: 400px) {
+    .btn-text { display: none; }
+    .nav-action-btn { padding: 0 10px; }
+  }
+
+  /* ── Player toolbar: wrap to 2 rows ── */
+  .player-toolbar { gap: 6px; flex-wrap: wrap; }
+  .ptool-btn      { height: 32px; padding: 0 10px; font-size: 12px; }
+  .ptool-spacer   { display: none; }
+  .ptool-copy     { margin-left: 0; }
+
+  /* ── History toolbar ── */
+  .history-toolbar    { gap: 7px; }
+  .history-search-wrap { min-width: 0; flex: 1; }
+  .history-sort       { flex: 1; min-width: 0; }
+  .htool-btn          { padding: 0 10px; font-size: 12px; }
+
+  /* ── History & playlist grids ── */
+  .history-grid   { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .playlists-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* ── Playlist detail ── */
   .playlist-detail-header { gap: 8px; }
+  .playlist-detail-actions { gap: 6px; }
+  .queue-action-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+  .playlist-item  { padding: 8px 10px; gap: 8px; }
   .playlist-item-thumb { width: 60px; height: 34px; }
+  .playlist-item-num { width: 18px; font-size: 12px; }
+
+  /* ── Modals ── */
+  .modal-box   { padding: 24px 16px 20px; }
+  .modal-title { font-size: 16px; }
+
+  /* ── Search panel ── */
   .search-result-thumb-wrap { width: 100px; height: 57px; }
-  .search-result-thumb { width: 100px; height: 57px; }
-  .search-result-title { font-size: 13px; }
+  .search-result-thumb      { width: 100px; height: 57px; }
+  .search-result-title      { font-size: 13px; }
+  .search-result            { gap: 10px; padding: 10px 12px; }
 }
